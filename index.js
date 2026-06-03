@@ -1,26 +1,21 @@
-(({ plugin, patcher, metro, flux }) => {
+export default (({ plugin, patcher, metro }) => {
     const patches = [];
     const STORAGE_KEY = "localMessageEdits";
 
-    // Get storage
     const storage = plugin.storage;
     if (!storage[STORAGE_KEY]) storage[STORAGE_KEY] = {};
 
-    // Metro finders via window.bunny
-    const { findByProps, findByName, findByDisplayName } = window.bunny?.metro ?? metro;
+    const { findByProps, findByDisplayName } = window.bunny?.metro ?? metro;
 
     return {
         start() {
             try {
                 const { before, after } = window.bunny?.patcher ?? patcher;
-
-                // Find the message long press action sheet
-                const ActionSheetUtils = findByProps("openLazy", "hideActionSheet");
                 const UserStore = findByProps("getCurrentUser");
                 const { React } = findByProps("React") ?? window;
-                const { Text, TouchableOpacity, View, Alert, TextInput } = findByProps("Text", "View", "TouchableOpacity") ?? window.ReactNative;
+                const RN = findByProps("Text", "View", "TouchableOpacity", "Alert") ?? window.ReactNative;
+                const { Text, TouchableOpacity, Alert } = RN;
 
-                // Patch message context menu to add "Edit locally"
                 const MessageMenu = findByProps("MessageLongPressActionSheet") ?? findByDisplayName("MessageLongPressActionSheet", false);
 
                 if (MessageMenu) {
@@ -28,10 +23,8 @@
                         after("default", MessageMenu, (args, res) => {
                             const msg = args?.[0]?.message;
                             if (!msg) return res;
-
                             const me = UserStore?.getCurrentUser?.();
                             if (!me || msg.author?.id !== me.id) return res;
-
                             const items = res?.props?.children;
                             if (!Array.isArray(items)) return res;
 
@@ -47,20 +40,13 @@
                                             "Only visible to you",
                                             [
                                                 { text: "Cancel", style: "cancel" },
-                                                {
-                                                    text: "Save",
-                                                    onPress(val) {
-                                                        if (val != null) storage[STORAGE_KEY][msg.id] = val;
-                                                    }
-                                                }
+                                                { text: "Save", onPress(val) { if (val != null) storage[STORAGE_KEY][msg.id] = val; } }
                                             ],
                                             "plain-text",
                                             existingEdit ?? msg.content
                                         );
                                     }
-                                },
-                                    React.createElement(Text, { style: { color: "#00b0f4", fontSize: 16 } }, "✏️  Edit locally")
-                                )
+                                }, React.createElement(Text, { style: { color: "#00b0f4", fontSize: 16 } }, "✏️  Edit locally"))
                             );
 
                             if (existingEdit) {
@@ -68,12 +54,8 @@
                                     React.createElement(TouchableOpacity, {
                                         key: "local-edit-clear",
                                         style: { paddingVertical: 14, paddingHorizontal: 16 },
-                                        onPress() {
-                                            delete storage[STORAGE_KEY][msg.id];
-                                        }
-                                    },
-                                        React.createElement(Text, { style: { color: "#f04747", fontSize: 16 } }, "🗑️  Clear local edit")
-                                    )
+                                        onPress() { delete storage[STORAGE_KEY][msg.id]; }
+                                    }, React.createElement(Text, { style: { color: "#f04747", fontSize: 16 } }, "🗑️  Clear local edit"))
                                 );
                             }
 
@@ -82,7 +64,6 @@
                     );
                 }
 
-                // Patch message content rendering to swap in overrides
                 const MessageContent = findByDisplayName("MessageContent", false) ?? findByProps("renderMessageContent");
                 if (MessageContent) {
                     const target = MessageContent.default ? MessageContent : { default: MessageContent };
@@ -97,7 +78,6 @@
                         })
                     );
                 }
-
             } catch (e) {
                 console.error("[LocalMessageEditor] start error:", e);
             }
