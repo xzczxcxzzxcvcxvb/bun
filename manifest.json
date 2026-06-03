@@ -1,0 +1,8 @@
+{
+  "id": "local-message-editor",
+  "name": "Local Message Editor",
+  "description": "Locally override how your sent messages display — client-side only.",
+  "authors": [{ "name": "you", "id": "0" }],
+  "main": "index.js",
+  "version": "1.0.0"
+}
